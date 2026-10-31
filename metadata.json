@@ -1,0 +1,6 @@
+{
+  "name": "PartyPass & Lucky Draw - ระบบลงทะเบียนงานเลี้ยง & สุ่มจับรางวัล",
+  "description": "แอพมือถือสีสันสดใสสำหรับลงทะเบียนเข้างานเลี้ยง เซลฟี่ ถ่ายภาพรับโต๊ะ แดชบอร์ดแอดมิน นำเข้า/ส่งออก Excel และระบบสุ่มจับรางวัล Lucky Draw แบบเรียลไทม์",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
