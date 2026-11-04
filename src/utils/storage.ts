@@ -12,8 +12,12 @@ const STORAGE_KEYS = {
 
 const DEFAULT_CONFIG: PartyConfig = {
   eventName: 'งานเลี้ยงสังสรรค์ (Party Celebration)',
+  eventSubtitle: 'ฉลองค่ำคืนแห่งความสุขและความสำเร็จร่วมกัน',
   eventDate: 'วันงานเลี้ยงสังสรรค์ | 18:00 น. เป็นต้นไป',
   eventVenue: 'ห้องจัดเลี้ยง (Grand Ballroom)',
+  eventContact: 'จุดต้อนรับหน้างาน',
+  ticketTitle: 'OFFICIAL PARTY PASS & TABLE PASS',
+  registrationSubtitle: 'กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ',
   themeColor: 'pastel-rainbow',
   isRegistrationOpen: true,
   blockedGroups: ['ผู้บริหาร/กรรมการ'],
@@ -206,6 +210,48 @@ export const StorageService = {
   setConfig(config: PartyConfig) {
     localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
     broadcastEvent('CONFIG_UPDATED', config);
+  },
+
+  // Clear only attendee registrations (e.g. to start registration for a new party session)
+  clearRegistrations() {
+    localStorage.setItem(STORAGE_KEYS.REGISTRATIONS, JSON.stringify([]));
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_REGISTRATION_ID);
+    broadcastEvent('REGISTRATION_ADDED');
+    broadcastEvent('LUCKY_DRAW_WON');
+    broadcastEvent('CONFIG_UPDATED');
+  },
+
+  // Start a fresh new party event
+  startNewParty(newConfig?: Partial<PartyConfig>, options: { clearRoster?: boolean; clearPrizes?: boolean } = {}) {
+    // Always clear check-ins and lucky winners
+    localStorage.setItem(STORAGE_KEYS.REGISTRATIONS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.LUCKY_WINNERS, JSON.stringify([]));
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_REGISTRATION_ID);
+
+    if (options.clearRoster) {
+      localStorage.setItem(STORAGE_KEYS.ROSTER, JSON.stringify([]));
+    }
+
+    if (options.clearPrizes) {
+      localStorage.setItem(STORAGE_KEYS.PRIZES, JSON.stringify([]));
+    } else {
+      // Reset remaining prize counts
+      const prizes = this.getPrizes();
+      prizes.forEach((p) => {
+        p.remaining = p.quantity;
+      });
+      this.setPrizes(prizes);
+    }
+
+    const currentConfig = this.getConfig();
+    const updatedConfig: PartyConfig = {
+      ...currentConfig,
+      ...newConfig,
+      isRegistrationOpen: true,
+      isVipTriggerActive: false,
+    };
+    this.setConfig(updatedConfig);
+    broadcastEvent('CONFIG_UPDATED', updatedConfig);
   },
 
   // Reset entire event data to defaults

@@ -82,19 +82,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </nav>
 
-        {/* Zone 3: 1 Primary Action (Admin Button) */}
-        <div className="flex items-center gap-2 shrink-0">
-          {isAdminLoggedIn ? (
+        {/* Zone 3: Admin Status / Toggle (Only shown when admin is logged in) */}
+        {isAdminLoggedIn && (
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => {
                 soundFX.playClick();
                 onChangeView(currentView === 'admin' ? (hasMyTicket ? 'ticket' : 'register') : 'admin');
               }}
-              className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
                 currentView === 'admin'
-                  ? 'bg-purple-100 text-purple-900 border border-purple-300'
-                  : 'bg-gradient-to-r from-amber-300 to-amber-400 text-amber-950 hover:from-amber-400 hover:to-amber-500'
+                  ? 'bg-purple-100 text-purple-900 border border-purple-300 hover:bg-purple-200'
+                  : 'bg-gradient-to-r from-purple-600 via-pink-500 to-amber-400 text-white shadow-md shadow-purple-200'
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
@@ -102,20 +102,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {currentView === 'admin' ? 'ดูหน้าผู้ร่วมงาน' : 'แดชบอร์ดแอดมิน'}
               </span>
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                soundFX.playClick();
-                onOpenAdminLogin();
-              }}
-              className="min-h-[44px] px-4 py-2 rounded-2xl text-xs font-bold bg-white hover:bg-purple-50 text-slate-700 hover:text-purple-800 border border-purple-200 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-2xs"
-            >
-              <Shield className="w-3.5 h-3.5 text-purple-600" />
-              <span>เข้าสู่ระบบแอดมิน</span>
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </header>
   );

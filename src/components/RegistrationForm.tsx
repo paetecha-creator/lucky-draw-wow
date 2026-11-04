@@ -162,13 +162,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-pink-100 via-purple-100 to-amber-100 text-purple-900 border border-purple-200 text-xs font-bold mb-2 shadow-xs">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>ลงทะเบียนเข้างานเลี้ยง & รับโต๊ะที่นั่ง</span>
+          <span>{config.eventSubtitle || 'ลงทะเบียนเข้างานเลี้ยง & รับโต๊ะที่นั่ง'}</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800">
           {config.eventName}
         </h2>
-        <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-          กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ
+        <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          {config.registrationSubtitle || 'กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ'}
         </p>
       </div>
 

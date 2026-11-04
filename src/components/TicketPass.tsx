@@ -48,7 +48,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
         {/* Pastel Header Banner */}
         <div className="bg-gradient-to-r from-pink-300 via-purple-300 to-amber-200 p-4 text-center text-slate-900 relative">
           <div className="text-[10px] uppercase font-black tracking-widest text-purple-900/80">
-            OFFICIAL PARTY PASS & TABLE PASS
+            {config.ticketTitle || 'OFFICIAL PARTY PASS & TABLE PASS'}
           </div>
           <h3 className="text-lg font-black tracking-wider uppercase drop-shadow-xs">
             {config.eventName}
@@ -56,7 +56,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
           <div className="flex items-center justify-center gap-3 text-[11px] text-purple-900 font-semibold mt-1">
             <span className="flex items-center gap-1">
               <Calendar className="w-3 h-3 text-amber-700" />
-              {config.eventDate.split('|')[0]}
+              {config.eventDate}
             </span>
           </div>
         </div>

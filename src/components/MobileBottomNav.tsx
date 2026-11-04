@@ -19,7 +19,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-purple-100 pb-safe shadow-lg">
-      <div className="grid grid-cols-4 items-center h-16 px-1">
+      <div className={`grid ${isAdminLoggedIn ? 'grid-cols-4' : 'grid-cols-3'} items-center h-16 px-1`}>
         {/* Tab 1: Register */}
         <button
           type="button"
@@ -75,26 +75,22 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span className="absolute top-2 right-3 w-2 h-2 rounded-full bg-amber-400" />
         </button>
 
-        {/* Tab 4: Admin */}
-        <button
-          type="button"
-          onClick={() => {
-            soundFX.playClick();
-            if (isAdminLoggedIn) {
+        {/* Tab 4: Admin (Only visible when Admin is logged in) */}
+        {isAdminLoggedIn && (
+          <button
+            type="button"
+            onClick={() => {
+              soundFX.playClick();
               onChangeView('admin');
-            } else {
-              onOpenAdminLogin();
-            }
-          }}
-          className={`flex flex-col items-center justify-center min-h-[44px] transition ${
-            currentView === 'admin' ? 'text-purple-700 font-bold' : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          <Shield className="w-5 h-5" />
-          <span className="text-[10px] font-medium mt-1">
-            {isAdminLoggedIn ? 'แอดมิน' : 'ล็อกอิน'}
-          </span>
-        </button>
+            }}
+            className={`flex flex-col items-center justify-center min-h-[44px] transition ${
+              currentView === 'admin' ? 'text-purple-700 font-bold' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Shield className="w-5 h-5" />
+            <span className="text-[10px] font-medium mt-1">แดชบอร์ด</span>
+          </button>
+        )}
       </div>
     </nav>
   );

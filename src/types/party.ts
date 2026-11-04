@@ -55,9 +55,13 @@ export interface LuckyDrawRecord {
 
 export interface PartyConfig {
   eventName: string;
-  eventDate: string;
-  eventVenue: string;
-  themeColor: string;
+  eventSubtitle?: string; // Slogan, theme, or company name
+  eventDate: string; // Date and time
+  eventVenue: string; // Venue, hotel, ballroom, or room
+  eventContact?: string; // Contact or helpdesk info
+  ticketTitle?: string; // Custom header on digital ticket pass
+  registrationSubtitle?: string; // Subtitle shown on registration screen
+  themeColor: string; // Theme color preset
   isRegistrationOpen: boolean;
   blockedGroups: string[]; // List of group names blocked from lucky draw
   autoBlockPreviousWinners: boolean; // Cannot win twice

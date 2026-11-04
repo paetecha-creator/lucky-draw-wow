@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
+import { Lock } from 'lucide-react';
 import {
   AttendeeRegistration,
   EmployeeRoster,
@@ -66,36 +67,46 @@ export default function App() {
     }
   }, [registrations]);
 
-  // Subscribe to BroadcastChannel for real-time syncing across all tabs / devices
+  // Subscribe to BroadcastChannel & 1s heartbeat for 100% instantaneous real-time sync across all devices & tabs
   useEffect(() => {
-    const unsubscribe = subscribeToBroadcast((event) => {
-      if (event.type === 'REGISTRATION_ADDED') {
-        setRegistrations(StorageService.getRegistrations());
-      } else if (event.type === 'LUCKY_DRAW_WON') {
-        setLuckyWinners(StorageService.getLuckyWinners());
-        setPrizes(StorageService.getPrizes());
-      } else if (event.type === 'CONFIG_UPDATED') {
-        setConfig(StorageService.getConfig());
-        setPrizes(StorageService.getPrizes());
-      } else if (event.type === 'ROSTER_UPDATED') {
-        setRoster(StorageService.getRoster());
-      }
+    const reloadAllFromStorage = () => {
+      setRoster(StorageService.getRoster());
+      setRegistrations(StorageService.getRegistrations());
+      setPrizes(StorageService.getPrizes());
+      setLuckyWinners(StorageService.getLuckyWinners());
+      setConfig(StorageService.getConfig());
+    };
+
+    // BroadcastChannel sync (instantaneous across tabs in modern browsers)
+    const unsubscribe = subscribeToBroadcast(() => {
+      reloadAllFromStorage();
     });
 
+    // Storage event sync (when localStorage changes in another window/tab)
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key?.startsWith('party_')) {
-        setRoster(StorageService.getRoster());
-        setRegistrations(StorageService.getRegistrations());
-        setPrizes(StorageService.getPrizes());
-        setLuckyWinners(StorageService.getLuckyWinners());
-        setConfig(StorageService.getConfig());
+        reloadAllFromStorage();
       }
     };
     window.addEventListener('storage', handleStorageEvent);
 
+    // 1-second active heartbeat sync (guarantees cross-window / iframe / mobile views update within 1s)
+    const heartbeatTimer = setInterval(() => {
+      const freshConfig = StorageService.getConfig();
+      const freshRegs = StorageService.getRegistrations();
+      const freshWinners = StorageService.getLuckyWinners();
+      const freshPrizes = StorageService.getPrizes();
+
+      setConfig((prev) => (JSON.stringify(prev) !== JSON.stringify(freshConfig) ? freshConfig : prev));
+      setRegistrations((prev) => (prev.length !== freshRegs.length || JSON.stringify(prev) !== JSON.stringify(freshRegs) ? freshRegs : prev));
+      setLuckyWinners((prev) => (prev.length !== freshWinners.length || JSON.stringify(prev) !== JSON.stringify(freshWinners) ? freshWinners : prev));
+      setPrizes((prev) => (JSON.stringify(prev) !== JSON.stringify(freshPrizes) ? freshPrizes : prev));
+    }, 1000);
+
     return () => {
       unsubscribe();
       window.removeEventListener('storage', handleStorageEvent);
+      clearInterval(heartbeatTimer);
     };
   }, []);
 
@@ -157,6 +168,27 @@ export default function App() {
     StorageService.resetAllLuckyDraws();
     setLuckyWinners([]);
     setPrizes(StorageService.getPrizes());
+  };
+
+  const handleClearRegistrations = () => {
+    StorageService.clearRegistrations();
+    setRegistrations([]);
+    setLuckyWinners([]);
+    setMyRegistration(null);
+    setPrizes(StorageService.getPrizes());
+  };
+
+  const handleStartNewParty = (
+    newConfig?: Partial<PartyConfig>,
+    options?: { clearRoster?: boolean; clearPrizes?: boolean }
+  ) => {
+    StorageService.startNewParty(newConfig, options);
+    setRegistrations([]);
+    setLuckyWinners([]);
+    setMyRegistration(null);
+    setConfig(StorageService.getConfig());
+    setPrizes(StorageService.getPrizes());
+    setRoster(StorageService.getRoster());
   };
 
   // VIP EXECUTIVE TRIGGER FUNCTION
@@ -254,6 +286,26 @@ export default function App() {
         onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
       />
 
+      {/* Floating banner when admin is previewing attendee view */}
+      {isAdminLoggedIn && currentView !== 'admin' && (
+        <div className="w-full bg-gradient-to-r from-purple-800 via-pink-700 to-amber-600 text-white py-2 px-4 shadow-md sticky top-16 z-30 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>โหมดทดสอบ: กำลังแสดงมุมมองของผู้ร่วมงานทั่วไป</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              soundFX.playClick();
+              setCurrentView('admin');
+            }}
+            className="px-3 py-1 rounded-xl bg-white text-purple-950 font-black text-xs hover:bg-amber-100 transition shadow-xs cursor-pointer"
+          >
+            กลับสู่แดชบอร์ดแอดมิน →
+          </button>
+        </div>
+      )}
+
       {/* Main Viewport Content */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 sm:py-8 relative z-10">
         {/* VIEW 1: REGISTRATION FORM */}
@@ -331,8 +383,11 @@ export default function App() {
                 onAddLuckyWinner={handleAddLuckyWinner}
                 onDeleteLuckyWinner={handleDeleteLuckyWinner}
                 onResetAllLuckyDraws={handleResetAllLuckyDraws}
+                onClearRegistrations={handleClearRegistrations}
+                onStartNewParty={handleStartNewParty}
                 onLogout={handleAdminLogout}
                 onOpenVipView={() => setCurrentView('vip')}
+                onSwitchToUserView={() => setCurrentView(myRegistration ? 'ticket' : 'register')}
               />
             ) : (
               <div className="max-w-sm mx-auto text-center p-8 rounded-3xl bg-white border border-purple-200 shadow-lg">
@@ -352,6 +407,24 @@ export default function App() {
           </>
         )}
       </main>
+
+      {/* Discreet bottom admin link - Not prominent, small text at screen bottom */}
+      {!isAdminLoggedIn && (
+        <footer className="w-full py-4 mt-auto text-center z-10 pb-20 md:pb-6">
+          <button
+            type="button"
+            onClick={() => {
+              soundFX.playClick();
+              setIsAdminLoginModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400/80 hover:text-slate-600 font-medium transition cursor-pointer select-none py-1 px-3 rounded-full hover:bg-white/60"
+            title="เข้าสู่ระบบสำหรับทีมงานผู้จัดงาน"
+          >
+            <Lock className="w-2.5 h-2.5 text-slate-400" />
+            <span>ระบบแอดมิน</span>
+          </button>
+        </footer>
+      )}
 
       {/* Mobile Fixed Bottom Navigation */}
       <MobileBottomNav

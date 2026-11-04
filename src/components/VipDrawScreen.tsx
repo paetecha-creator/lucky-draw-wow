@@ -56,9 +56,9 @@ export const VipDrawScreen: React.FC<VipDrawScreenProps> = ({
               <Crown className="w-5 h-5 text-amber-800" />
             </div>
             <div>
-              <div className="text-[11px] font-bold text-purple-700 uppercase tracking-widest flex items-center gap-1">
-                <span>VIP REMOTE CONTROLLER</span>
-                <Sparkles className="w-3 h-3 text-amber-500" />
+              <div className="text-[10px] font-bold text-purple-700 uppercase tracking-widest flex items-center gap-1">
+                <span className="truncate max-w-[180px]">{config.eventName || 'VIP REMOTE'}</span>
+                <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
               </div>
               <h2 className="text-base font-extrabold text-slate-800">
                 Executive Lucky Draw Portal

@@ -33,6 +33,14 @@ import {
   Gift,
   Lock,
   Unlock,
+  Settings,
+  Sliders,
+  Calendar,
+  MapPin,
+  Save,
+  RefreshCw,
+  Check,
+  Eye,
 } from 'lucide-react';
 import {
   AttendeeRegistration,
@@ -62,8 +70,11 @@ interface AdminDashboardProps {
   onAddLuckyWinner: (winner: LuckyDrawRecord) => void;
   onDeleteLuckyWinner: (recordId: string) => void;
   onResetAllLuckyDraws: () => void;
+  onClearRegistrations?: () => void;
+  onStartNewParty?: (newConfig?: Partial<PartyConfig>, options?: { clearRoster?: boolean; clearPrizes?: boolean }) => void;
   onLogout: () => void;
   onOpenVipView?: () => void;
+  onSwitchToUserView?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -78,11 +89,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddLuckyWinner,
   onDeleteLuckyWinner,
   onResetAllLuckyDraws,
+  onClearRegistrations,
+  onStartNewParty,
   onLogout,
   onOpenVipView,
+  onSwitchToUserView,
 }) => {
   // Navigation tabs inside admin
-  const [activeTab, setActiveTab] = useState<'overview' | 'roster' | 'prizes' | 'luckydraw' | 'history'>('luckydraw');
+  const [activeTab, setActiveTab] = useState<'overview' | 'roster' | 'prizes' | 'luckydraw' | 'history' | 'settings'>('luckydraw');
 
   // Search & Filter state for attendees
   const [attendeeSearch, setAttendeeSearch] = useState('');
@@ -107,6 +121,106 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Editable Event Name state
   const [isEditingEventName, setIsEditingEventName] = useState(false);
   const [tempEventName, setTempEventName] = useState(config.eventName);
+
+  // Event Settings Form State (for any party customization)
+  const [settingsName, setSettingsName] = useState(config.eventName);
+  const [settingsSubtitle, setSettingsSubtitle] = useState(config.eventSubtitle || '');
+  const [settingsDate, setSettingsDate] = useState(config.eventDate);
+  const [settingsVenue, setSettingsVenue] = useState(config.eventVenue);
+  const [settingsContact, setSettingsContact] = useState(config.eventContact || '');
+  const [settingsTicketTitle, setSettingsTicketTitle] = useState(config.ticketTitle || 'OFFICIAL PARTY PASS & TABLE PASS');
+  const [settingsRegSubtitle, setSettingsRegSubtitle] = useState(config.registrationSubtitle || 'กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ');
+  const [settingsSavedNotice, setSettingsSavedNotice] = useState<string | null>(null);
+
+  // Start New Party Modal State
+  const [isNewPartyModalOpen, setIsNewPartyModalOpen] = useState(false);
+  const [newPartyName, setNewPartyName] = useState('');
+  const [newPartyClearRoster, setNewPartyClearRoster] = useState(false);
+  const [newPartyClearPrizes, setNewPartyClearPrizes] = useState(false);
+
+  // Keep settings form synced when config changes
+  React.useEffect(() => {
+    setSettingsName(config.eventName);
+    setSettingsSubtitle(config.eventSubtitle || '');
+    setSettingsDate(config.eventDate);
+    setSettingsVenue(config.eventVenue);
+    setSettingsContact(config.eventContact || '');
+    setSettingsTicketTitle(config.ticketTitle || 'OFFICIAL PARTY PASS & TABLE PASS');
+    setSettingsRegSubtitle(config.registrationSubtitle || 'กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ');
+  }, [config]);
+
+  // Handle saving event customization settings
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    soundFX.playCelebrationChime();
+    onUpdateConfig({
+      ...config,
+      eventName: settingsName.trim() || 'งานเลี้ยงสังสรรค์ (Party Celebration)',
+      eventSubtitle: settingsSubtitle.trim(),
+      eventDate: settingsDate.trim(),
+      eventVenue: settingsVenue.trim(),
+      eventContact: settingsContact.trim(),
+      ticketTitle: settingsTicketTitle.trim() || 'OFFICIAL PARTY PASS & TABLE PASS',
+      registrationSubtitle: settingsRegSubtitle.trim() || 'กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ',
+    });
+    setSettingsSavedNotice('บันทึกรายละเอียดงานเลี้ยงสำเร็จแล้ว! ข้อมูลจะอัปเดตทุกหน้าจอทันที');
+    setTimeout(() => setSettingsSavedNotice(null), 4000);
+  };
+
+  // Quick preset template applicator
+  const handleApplyPreset = (preset: {
+    name: string;
+    subtitle: string;
+    venue: string;
+    ticketTitle: string;
+    regSubtitle: string;
+  }) => {
+    soundFX.playClick();
+    setSettingsName(preset.name);
+    setSettingsSubtitle(preset.subtitle);
+    setSettingsVenue(preset.venue);
+    setSettingsTicketTitle(preset.ticketTitle);
+    setSettingsRegSubtitle(preset.regSubtitle);
+  };
+
+  // Clear attendee registrations only
+  const handleConfirmClearRegistrations = () => {
+    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลผู้ลงทะเบียนและประวัติการสุ่มรางวัลทั้งหมดสำหรับงานนี้? (รายชื่อพนักงานใน Excel และของรางวัลจะยังคงอยู่)')) {
+      soundFX.playClick();
+      if (onClearRegistrations) {
+        onClearRegistrations();
+      }
+      setSettingsSavedNotice('ล้างข้อมูลผู้ลงทะเบียนและประวัติ Lucky Draw เรียบร้อยแล้ว พร้อมเริ่มรับลงทะเบียนรอบใหม่');
+      setTimeout(() => setSettingsSavedNotice(null), 4000);
+    }
+  };
+
+  // Start a fresh new party
+  const handleConfirmNewParty = () => {
+    soundFX.playCelebrationChime();
+    if (onStartNewParty) {
+      onStartNewParty(
+        {
+          eventName: newPartyName.trim() || settingsName.trim() || 'งานเลี้ยงสังสรรค์ (Party Celebration)',
+          eventSubtitle: settingsSubtitle.trim(),
+          eventDate: settingsDate.trim(),
+          eventVenue: settingsVenue.trim(),
+          eventContact: settingsContact.trim(),
+          ticketTitle: settingsTicketTitle.trim() || 'OFFICIAL PARTY PASS & TABLE PASS',
+          registrationSubtitle: settingsRegSubtitle.trim() || 'กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ',
+          isRegistrationOpen: true,
+          isVipTriggerActive: false,
+        },
+        {
+          clearRoster: newPartyClearRoster,
+          clearPrizes: newPartyClearPrizes,
+        }
+      );
+    }
+    setIsNewPartyModalOpen(false);
+    setSettingsSavedNotice('เริ่มต้นงานเลี้ยงใหม่เรียบร้อยแล้ว! ระบบเปิดรับลงทะเบียนใหม่พร้อมใช้งาน');
+    setTimeout(() => setSettingsSavedNotice(null), 4000);
+  };
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -487,6 +601,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
           </button>
 
+          {/* Preview Attendee Screen */}
+          {onSwitchToUserView && (
+            <button
+              type="button"
+              onClick={() => {
+                soundFX.playClick();
+                onSwitchToUserView();
+              }}
+              className="min-h-[44px] px-3.5 py-2 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold border border-purple-200 flex items-center gap-1.5 transition cursor-pointer"
+              title="สลับไปดูหน้าจอลงทะเบียน / บัตรเข้างาน / ผลรางวัลของผู้ร่วมงาน"
+            >
+              <Eye className="w-3.5 h-3.5 text-purple-600" />
+              <span>ดูหน้าจอผู้ร่วมงาน</span>
+            </button>
+          )}
+
           {/* Logout Button */}
           <button
             type="button"
@@ -637,6 +767,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         >
           <Award className="w-4 h-4 text-purple-600" />
           <span>รายงานผลสุ่มรางวัล ({luckyWinners.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            soundFX.playClick();
+            setActiveTab('settings');
+          }}
+          className={`min-h-[44px] px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
+            activeTab === 'settings'
+              ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-amber-400 text-white shadow-sm'
+              : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50'
+          }`}
+        >
+          <Settings className="w-4 h-4 text-purple-600" />
+          <span>ตั้งค่างานเลี้ยง & สลับงานใหม่</span>
         </button>
       </div>
 
@@ -1487,6 +1633,414 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 6: EVENT SETTINGS & START NEW PARTY (CUSTOMIZE FOR ANY EVENT)
+      ========================================================================= */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          {/* Success Toast Banner */}
+          {settingsSavedNotice && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-800 flex items-center justify-between shadow-sm animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 font-bold text-xs">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                <span>{settingsSavedNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettingsSavedNotice(null)}
+                className="text-emerald-700 hover:text-emerald-900 text-xs font-bold px-2 py-1 cursor-pointer"
+              >
+                ปิด
+              </button>
+            </div>
+          )}
+
+          {/* Quick Preset Templates */}
+          <div className="p-5 rounded-3xl bg-white border border-purple-200 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                  เทมเพลตตัวอย่างด่วน (Quick Presets)
+                </h3>
+              </div>
+              <span className="text-[11px] text-slate-400">กดเพื่อเปลี่ยนข้อความตัวอย่างอัตโนมัติ</span>
+            </div>
+            <p className="text-xs text-slate-600 mb-3">
+              คลิกเทมเพลตด้านล่างเพื่อเติมข้อความตามประเภทงานเลี้ยง แล้วกดแก้ไขหรือกดบันทึกได้ทันที:
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handleApplyPreset({
+                    name: 'งานเลี้ยงสังสรรค์พนักงานประจำปี 2026',
+                    subtitle: 'Together We Shine & Celebrate 2026',
+                    venue: 'ห้อง Grand Ballroom โรงแรมพลาซ่า',
+                    ticketTitle: 'OFFICIAL ANNUAL PARTY PASS',
+                    regSubtitle: 'กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ',
+                  })
+                }
+                className="p-3 rounded-2xl bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-200 hover:border-pink-400 text-left transition text-xs font-bold text-purple-900 cursor-pointer shadow-xs"
+              >
+                <div className="text-sm mb-1">🎉 งานเลี้ยงประจำปี</div>
+                <div className="text-[10px] text-slate-500 font-normal truncate">Annual Staff Party</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleApplyPreset({
+                    name: 'งานเลี้ยงสังสรรค์ส่งท้ายปีเก่า ต้อนรับปีใหม่',
+                    subtitle: 'Happy New Year Celebration & Lucky Night',
+                    venue: 'ห้องจัดเลี้ยง ชั้น 3 สโมสรริมน้ำ',
+                    ticketTitle: 'NEW YEAR CELEBRATION PASS',
+                    regSubtitle: 'ลงทะเบียนเข้างาน เซลฟี่ และลุ้นของรางวัล Lucky Draw ตลอดค่ำคืน',
+                  })
+                }
+                className="p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 hover:border-amber-400 text-left transition text-xs font-bold text-amber-950 cursor-pointer shadow-xs"
+              >
+                <div className="text-sm mb-1">🌟 งานฉลองปีใหม่</div>
+                <div className="text-[10px] text-slate-500 font-normal truncate">New Year Party</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleApplyPreset({
+                    name: 'งานเลี้ยงกระชับมิตร Company Outing & Dinner',
+                    subtitle: 'Connecting People, Inspiring Future',
+                    venue: 'ริมสระน้ำ / Beachfront Garden Resort',
+                    ticketTitle: 'OUTING GALA DINNER PASS',
+                    regSubtitle: 'เช็คอินร่วมกิจกรรม เซลฟี่ และดูหมายเลขโต๊ะรับประทานอาหาร',
+                  })
+                }
+                className="p-3 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-200 hover:border-teal-400 text-left transition text-xs font-bold text-teal-950 cursor-pointer shadow-xs"
+              >
+                <div className="text-sm mb-1">🌴 งาน Outing & กาล่า</div>
+                <div className="text-[10px] text-slate-500 font-normal truncate">Outing Dinner</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleApplyPreset({
+                    name: 'งานฉลองความสำเร็จและขอบคุณพนักงาน',
+                    subtitle: 'Celebrating Excellence & Rewarding Success',
+                    venue: 'ห้องประชุมอเนกประสงค์ อาคารสำนักงานใหญ่',
+                    ticketTitle: 'AWARDS & APPRECIATION PASS',
+                    regSubtitle: 'ยินดีต้อนรับทุกท่านสู่ค่ำคืนแห่งเกียรติยศและของรางวัลพิเศษ',
+                  })
+                }
+                className="p-3 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 hover:border-indigo-400 text-left transition text-xs font-bold text-indigo-950 cursor-pointer shadow-xs"
+              >
+                <div className="text-sm mb-1">🏆 งานฉลองความสำเร็จ</div>
+                <div className="text-[10px] text-slate-500 font-normal truncate">Awards & Night</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Settings Form */}
+          <form onSubmit={handleSaveSettings} className="p-6 rounded-3xl bg-white border border-purple-200 shadow-sm space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-purple-100">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-purple-600" />
+                <h3 className="text-sm font-bold text-slate-800">
+                  ปรับแต่งรายละเอียดงานเลี้ยง (Event Customization)
+                </h3>
+              </div>
+              <span className="text-[11px] text-purple-700 bg-purple-50 px-3 py-1 rounded-full font-bold">
+                แอดมินกำหนดเองได้อิสระ ไม่จำกัดชื่องาน
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Event Name */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  ชื่องานเลี้ยง (Event Name) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={settingsName}
+                  onChange={(e) => setSettingsName(e.target.value)}
+                  placeholder="เช่น งานเลี้ยงพนักงานบริษัทประจำปี 2026, Summer Party..."
+                  className="w-full px-4 py-2.5 rounded-2xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm font-bold text-slate-800 bg-purple-50/20"
+                  required
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  จะแสดงเด่นที่แถบบนสุด (Navbar), หน้าลงทะเบียน, และบัตร Digital Pass
+                </p>
+              </div>
+
+              {/* Subtitle / Slogan */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  คำโปรย หรือสโลแกนงาน (Slogan / Subtitle)
+                </label>
+                <input
+                  type="text"
+                  value={settingsSubtitle}
+                  onChange={(e) => setSettingsSubtitle(e.target.value)}
+                  placeholder="เช่น Together We Shine 2026, ธีมสีสันสดใส..."
+                  className="w-full px-4 py-2.5 rounded-2xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-xs text-slate-800 bg-white"
+                />
+              </div>
+
+              {/* Date & Time */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  วันที่ & เวลาจัดงาน (Event Date & Time)
+                </label>
+                <div className="relative">
+                  <Calendar className="w-4 h-4 text-purple-500 absolute left-3 top-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={settingsDate}
+                    onChange={(e) => setSettingsDate(e.target.value)}
+                    placeholder="เช่น วันศุกร์ที่ 19 ธันวาคม 2569 เวลา 18:00 น."
+                    className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-xs text-slate-800 bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Venue */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  สถานที่จัดงาน / ห้องจัดเลี้ยง (Venue & Room)
+                </label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 text-pink-500 absolute left-3 top-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={settingsVenue}
+                    onChange={(e) => setSettingsVenue(e.target.value)}
+                    placeholder="เช่น ห้อง Grand Ballroom ชั้น 2 โรงแรมพลาซ่า"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-xs text-slate-800 bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Contact / Helpdesk */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  ช่องทางติดต่อทีมงาน / จุดช่วยเหลือ (Helpdesk / Contact)
+                </label>
+                <input
+                  type="text"
+                  value={settingsContact}
+                  onChange={(e) => setSettingsContact(e.target.value)}
+                  placeholder="เช่น ฝ่ายบุคคล (HR) หรือ จุดลงทะเบียนหน้าประตู"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-xs text-slate-800 bg-white"
+                />
+              </div>
+
+              {/* Ticket Title */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  ข้อความหัวบัตรเข้างาน (Digital Pass Header)
+                </label>
+                <input
+                  type="text"
+                  value={settingsTicketTitle}
+                  onChange={(e) => setSettingsTicketTitle(e.target.value)}
+                  placeholder="OFFICIAL PARTY PASS & TABLE PASS"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-xs font-mono text-slate-800 bg-white"
+                />
+              </div>
+
+              {/* Registration Subtitle */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  คำแนะนำหน้าลงทะเบียน (Registration Subtitle)
+                </label>
+                <input
+                  type="text"
+                  value={settingsRegSubtitle}
+                  onChange={(e) => setSettingsRegSubtitle(e.target.value)}
+                  placeholder="กรอกรหัสพนักงาน เซลฟี่ใบหน้า และรับบัตรเข้างานพร้อมหมายเลขโต๊ะ"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-xs text-slate-800 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Live Preview Box */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-pink-50 to-amber-50 border border-purple-200">
+              <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wider mb-2">
+                ตัวอย่างการแสดงผลบนหน้าจอพนักงาน (Live Preview):
+              </div>
+              <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-purple-100 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-black text-slate-800">{settingsName || 'ชื่องานเลี้ยง'}</div>
+                  <div className="text-[11px] text-purple-700 font-medium">{settingsSubtitle || 'คำโปรยงาน'}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    📍 {settingsVenue} • 📅 {settingsDate}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-amber-100 text-amber-800 font-bold">
+                    {settingsTicketTitle || 'PARTY PASS'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="submit"
+                className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-500 to-amber-400 hover:from-purple-700 hover:to-amber-500 text-white font-black text-xs shadow-md shadow-purple-200 flex items-center gap-2 transition active:scale-95 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>บันทึกการเปลี่ยนแปลงทั้งหมด</span>
+              </button>
+            </div>
+          </form>
+
+          {/* DANGER & REUSABILITY ZONE - Start New Event or Reset */}
+          <div className="p-6 rounded-3xl bg-white border border-rose-200 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-rose-100">
+              <AlertTriangle className="w-5 h-5 text-rose-500" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">
+                  เครื่องมือสลับงานเลี้ยง & รีเซ็ตระบบ (Switch Event & Reset Tools)
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  สำหรับนำระบบนี้ไปใช้กับงานเลี้ยงถัดไป หรือเคลียร์ข้อมูลเพื่อเริ่มงานจริง
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Option 1: Clear Check-ins only */}
+              <div className="p-4 rounded-2xl bg-rose-50/40 border border-rose-200 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-rose-800 font-bold text-xs mb-1">
+                    <RotateCcw className="w-4 h-4 text-rose-600" />
+                    <span>1. ล้างเฉพาะผู้ลงทะเบียน & ประวัติ Lucky Draw</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mb-4 leading-relaxed">
+                    ลบข้อมูลผู้ที่เช็คอินเข้างานและผลการแจกรางวัลทั้งหมด แต่ยังคงรายชื่อพนักงานจากไฟล์ Excel และรายการของรางวัลไว้ตามเดิม (เหมาะสำหรับใช้หลังการทดสอบระบบก่อนเริ่มงานจริง)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleConfirmClearRegistrations}
+                  className="min-h-[44px] w-full px-4 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>ล้างเฉพาะผู้ลงทะเบียน ({registrations.length} คน)</span>
+                </button>
+              </div>
+
+              {/* Option 2: Start Brand New Event */}
+              <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-200 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-purple-900 font-bold text-xs mb-1">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span>2. เริ่มต้นจัดงานเลี้ยงใหม่ทั้งหมด (Start New Event)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mb-4 leading-relaxed">
+                    สร้างงานเลี้ยงใหม่ สามารถตั้งชื่องานใหม่ พร้อมเลือกว่าจะล้างหรือเก็บรายชื่อพนักงานและของรางวัลไว้ เพื่อให้พร้อมสำหรับงานเลี้ยงครั้งถัดไปได้ทันที
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewPartyName(settingsName);
+                    setIsNewPartyModalOpen(true);
+                  }}
+                  className="min-h-[44px] w-full px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-purple-200 cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>เริ่มต้นจัดงานเลี้ยงใหม่</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* START NEW PARTY MODAL */}
+      {isNewPartyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-3xl bg-white border-2 border-purple-200 p-6 shadow-2xl relative animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex items-center gap-2 text-purple-900">
+              <Sparkles className="w-6 h-6 text-amber-500" />
+              <h3 className="text-lg font-black text-slate-800">
+                เริ่มต้นจัดงานเลี้ยงใหม่ (Start New Event)
+              </h3>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              ระบบจะทำการล้างข้อมูลการลงทะเบียนและผล Lucky Draw เดิมทั้งหมด และเปิดระบบรับลงทะเบียนใหม่สำหรับงานเลี้ยงนี้
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                ชื่องานเลี้ยงใหม่
+              </label>
+              <input
+                type="text"
+                value={newPartyName}
+                onChange={(e) => setNewPartyName(e.target.value)}
+                placeholder="ระบุชื่องานเลี้ยงใหม่ เช่น งานเลี้ยงพนักงานส่งท้ายปี 2026"
+                className="w-full px-4 py-2.5 rounded-2xl border border-purple-200 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+
+            <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-3">
+              <div className="text-xs font-bold text-slate-700">ตัวเลือกเพิ่มเติม:</div>
+              <label className="flex items-start gap-2.5 text-xs text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newPartyClearRoster}
+                  onChange={(e) => setNewPartyClearRoster(e.target.checked)}
+                  className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                />
+                <div>
+                  <span className="font-bold">ล้างรายชื่อพนักงานเดิมออกทั้งหมด</span>
+                  <p className="text-[11px] text-slate-500">
+                    เลือกข้อนี้หากต้องการนำเข้าไฟล์ Excel รายชื่อพนักงานชุดใหม่สำหรับงานนี้
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-2.5 text-xs text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newPartyClearPrizes}
+                  onChange={(e) => setNewPartyClearPrizes(e.target.checked)}
+                  className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                />
+                <div>
+                  <span className="font-bold">ล้างรายการของรางวัลเดิมทั้งหมด</span>
+                  <p className="text-[11px] text-slate-500">
+                    เลือกข้อนี้หากต้องการกำหนดรายการของรางวัลใหม่ทั้งหมดตั้งแต่ต้น
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsNewPartyModalOpen(false)}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmNewParty}
+                className="min-h-[44px] px-6 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-500 to-amber-400 hover:from-purple-700 hover:to-amber-500 text-white text-xs font-black shadow-md shadow-purple-200 cursor-pointer active:scale-95 transition"
+              >
+                ยืนยันเริ่มงานเลี้ยงใหม่
+              </button>
             </div>
           </div>
         </div>

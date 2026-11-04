@@ -46,7 +46,7 @@ export const LiveDrawFeed: React.FC<LiveDrawFeedProps> = ({
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-pink-100 text-pink-800 border border-pink-200 text-[11px] font-bold mb-1 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-pink-500 animate-ping" />
-            <span>LIVE DRAW ARENA</span>
+            <span>{config.eventName} • LIVE DRAW</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
             การประกาศรางวัล Lucky Draw แบบสด
